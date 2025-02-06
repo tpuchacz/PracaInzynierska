@@ -7,8 +7,25 @@
         mc:Ignorable="d"
         Title="Menadżer oprogramowania" Height="720" Width="1280">
     <Grid>
-        <Button Content="Download" x:Name="dwnload" Click="dwnload_Click" HorizontalAlignment="Left" Margin="447,301,0,0" VerticalAlignment="Top"/>
-        <TextBlock x:Name="error" HorizontalAlignment="Left" Margin="591,303,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
-        <Button Content="Install" x:Name="install" Click="install_Click" HorizontalAlignment="Left" Margin="465,386,0,0" VerticalAlignment="Top"/>
+        <ListView BorderBrush="White" BorderThickness="1" Height="500" ItemsSource="{Binding code.SoftwareItems}"
+          Width="800" x:Name="listViewTest" HorizontalAlignment="Center" VerticalAlignment="Center" SelectionMode="Multiple">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Width="200" Header="title1" DisplayMemberBinding="{Binding Name}"/>
+                    <GridViewColumn Width="200" Header="title2" DisplayMemberBinding="{Binding Version}"/>
+                    <GridViewColumn Width="200" Header="title3" DisplayMemberBinding="{Binding Creator}"/>
+                </GridView>
+            </ListView.View>
+            <ListView.GroupStyle>
+                <GroupStyle>
+                    <GroupStyle.HeaderTemplate>
+                        <DataTemplate>
+                            <TextBlock FontWeight="Bold" HorizontalAlignment="Stretch" Foreground="Black" FontSize="14" Text="{Binding Category}"/>
+                        </DataTemplate>
+                    </GroupStyle.HeaderTemplate>
+                </GroupStyle>
+            </ListView.GroupStyle>
+        </ListView>
+        <TextBlock HorizontalAlignment="Left" x:Name="error" Margin="1014,619,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
     </Grid>
 </Window>
