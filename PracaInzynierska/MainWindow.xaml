@@ -3,29 +3,64 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:PracaInzynierska"
-        mc:Ignorable="d"
-        Title="Menadżer oprogramowania" Height="720" Width="1280">
-    <Grid>
-        <ListView BorderBrush="White" BorderThickness="1" Height="500" ItemsSource="{Binding code.SoftwareItems}"
-          Width="800" x:Name="listViewTest" HorizontalAlignment="Center" VerticalAlignment="Center" SelectionMode="Multiple">
+        xmlns:local="clr-namespace:PracaInzynierska" mc:Ignorable="d"
+        Title="Menadżer oprogramowania" Height="720" Width="1280" MinHeight="480" MinWidth="720" Background="LightGray">
+    <Window.Resources>
+
+    </Window.Resources>
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="5*"/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+        <ListView BorderBrush="Black" BorderThickness="1" ItemsSource="{Binding code.SoftwareItems}" x:Name="listViewTest"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" SelectionMode="Multiple">
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Width="200" Header="title1" DisplayMemberBinding="{Binding Name}"/>
-                    <GridViewColumn Width="200" Header="title2" DisplayMemberBinding="{Binding Version}"/>
-                    <GridViewColumn Width="200" Header="title3" DisplayMemberBinding="{Binding Creator}"/>
+                    <GridView.ColumnHeaderContainerStyle>
+                        <Style TargetType="{x:Type GridViewColumnHeader}">
+                            <Setter Property="FontWeight" Value="Bold"></Setter>
+                            <Setter Property="Foreground" Value="Black"></Setter>
+                            <Setter Property="Background">
+                                <Setter.Value>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Offset="0.0" Color="#0c612e" />
+                                        <GradientStop Offset="1.0" Color="#109e49" />
+                                    </LinearGradientBrush>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="HorizontalContentAlignment" Value="Center" />
+                        </Style>
+                    </GridView.ColumnHeaderContainerStyle>
+
+                    <GridViewColumn Width="200" Header="Nazwa" DisplayMemberBinding="{Binding Name}"/>
+                    <GridViewColumn Width="200" Header="Wersja" DisplayMemberBinding="{Binding Version}"/>
+                    <GridViewColumn Width="200" Header="Twórca" DisplayMemberBinding="{Binding Creator}"/>
+                    <GridViewColumn Width="200" Header="Ostatnia aktualizacja" DisplayMemberBinding="{Binding LastUpdate}"/>
                 </GridView>
             </ListView.View>
             <ListView.GroupStyle>
                 <GroupStyle>
-                    <GroupStyle.HeaderTemplate>
-                        <DataTemplate>
-                            <TextBlock FontWeight="Bold" HorizontalAlignment="Stretch" Foreground="Black" FontSize="14" Text="{Binding Category}"/>
-                        </DataTemplate>
-                    </GroupStyle.HeaderTemplate>
+                    <GroupStyle.ContainerStyle>
+                        <Style TargetType="{x:Type GroupItem}">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate>
+                                        <Expander HorizontalContentAlignment="Center" x:Name="expander" IsExpanded="False" Margin="5" BorderBrush="DarkGray">
+                                            <Expander.Header>
+                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="Gray" FontSize="26"/>
+                                            </Expander.Header>
+                                            <ItemsPresenter />
+                                        </Expander>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </GroupStyle.ContainerStyle>
                 </GroupStyle>
             </ListView.GroupStyle>
         </ListView>
-        <TextBlock HorizontalAlignment="Left" x:Name="error" Margin="1014,619,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
+        <TextBlock Grid.Row="1" HorizontalAlignment="Left" x:Name="error" Margin="1042,76,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
     </Grid>
 </Window>

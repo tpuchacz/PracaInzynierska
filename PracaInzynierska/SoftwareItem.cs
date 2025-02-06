@@ -25,7 +25,7 @@ namespace PracaInzynierska
         private string? creator;
 
         [ObservableProperty]
-        private DateTime? lastUpdate;
+        private string? lastUpdate;
 
         [ObservableProperty]
         private string? category;

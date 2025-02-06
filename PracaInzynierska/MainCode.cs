@@ -52,7 +52,7 @@ namespace PracaInzynierska
                         item.DownloadLink = reader.GetString("downloadLink");
                         item.Creator = reader.GetString("companyName");
                         item.Version = reader.GetString("currentVersion");
-                        item.LastUpdate = reader.GetDateTime("updateDate");
+                        item.LastUpdate = reader.GetDateTime("updateDate").ToString("dd MMMM, yyyy"); 
                         item.Category = reader.GetString("category");
                         item.ParameterSilent = reader.GetString("parameterSilent");
                         item.ParameterDirectory = reader.GetString("parameterDir");
