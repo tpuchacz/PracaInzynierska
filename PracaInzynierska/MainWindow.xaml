@@ -3,9 +3,20 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" Title="Menadżer oprogramowania" Height="720" Width="1280" MinHeight="480" MinWidth="720" Background="LightGray">
+        xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase" 
+        mc:Ignorable="d" Title="Menadżer oprogramowania" Height="720" Width="1280" MinHeight="600" MinWidth="900" Background="LightGray">
     <Window.Resources>
-
+        <CollectionViewSource Source="{Binding SoftwareItems}" x:Key="items">
+            <CollectionViewSource.GroupDescriptions>
+                <PropertyGroupDescription PropertyName="Category"/>
+            </CollectionViewSource.GroupDescriptions>
+            <CollectionViewSource.SortDescriptions>
+                <scm:SortDescription PropertyName="Category" />
+            </CollectionViewSource.SortDescriptions>
+            <CollectionViewSource.LiveFilteringProperties>
+                Category
+            </CollectionViewSource.LiveFilteringProperties>
+        </CollectionViewSource>
     </Window.Resources>
 
     <Grid Margin="15">
@@ -13,7 +24,8 @@
             <RowDefinition Height="5*"/>
             <RowDefinition/>
         </Grid.RowDefinitions>
-        <ListView BorderBrush="Black" BorderThickness="1" ItemsSource="{Binding SoftwareItems}" x:Name="listViewPrograms"
+
+        <ListView BorderBrush="Black" BorderThickness="1" ItemsSource="{Binding Source={StaticResource items}}" x:Name="listViewPrograms"
                   HorizontalAlignment="Stretch" VerticalAlignment="Stretch" SelectionMode="Multiple">
             <ListView.View>
                 <GridView>
@@ -21,6 +33,7 @@
                         <Style TargetType="{x:Type GridViewColumnHeader}">
                             <Setter Property="FontWeight" Value="Bold"></Setter>
                             <Setter Property="Foreground" Value="Black"></Setter>
+                            <Setter Property="HorizontalAlignment" Value="Stretch"></Setter>
                             <Setter Property="Background">
                                 <Setter.Value>
                                     <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -34,9 +47,10 @@
                     </GridView.ColumnHeaderContainerStyle>
 
                     <GridViewColumn Width="200" Header="Nazwa" DisplayMemberBinding="{Binding Name}"/>
-                    <GridViewColumn Width="200" Header="Wersja" DisplayMemberBinding="{Binding Version}"/>
                     <GridViewColumn Width="200" Header="Twórca" DisplayMemberBinding="{Binding Creator}"/>
                     <GridViewColumn Width="200" Header="Ostatnia aktualizacja" DisplayMemberBinding="{Binding LastUpdate}"/>
+                    <GridViewColumn Width="200" Header="Wersja" DisplayMemberBinding="{Binding Version}"/>
+                    <GridViewColumn Width="200" Header="Obecna wersja" DisplayMemberBinding="{Binding CurrentVersion}"/>
                 </GridView>
             </ListView.View>
             <ListView.GroupStyle>
@@ -46,7 +60,7 @@
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate>
-                                        <Expander HorizontalContentAlignment="Center" x:Name="expander" IsExpanded="False" Margin="5" BorderBrush="DarkGray">
+                                        <Expander HorizontalContentAlignment="Center" x:Name="expander" IsExpanded="True" Margin="5" BorderBrush="DarkGray">
                                             <Expander.Header>
                                                 <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="Gray" FontSize="26"/>
                                             </Expander.Header>
@@ -62,15 +76,18 @@
         </ListView>
         <Button Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,50,50,0"
                 Content="Wybierz programy..." x:Name="installButton" IsEnabled="False" Command="{Binding StartInstallationProcessCommand}"></Button>
-        <TextBlock Grid.Row="1" HorizontalAlignment="Left" x:Name="error" Margin="1042,76,0,0" TextWrapping="Wrap" Text="TextBlock" VerticalAlignment="Top"/>
+        <Button Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,50,210,0"
+                Content="Usuń zaznaczenie" Click="Button_Click"></Button>
         <TextBox Text="{Binding ProgressText}"
                  Grid.Row="1"
                  Width="500"
+                 IsReadOnly="True"
                  HorizontalAlignment="Left"
-                 IsEnabled="False"
+                 VerticalContentAlignment="Top"
                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
                  ScrollViewer.VerticalScrollBarVisibility="Auto"
-                 ScrollViewer.CanContentScroll="True">
+                 ScrollViewer.CanContentScroll="True"
+                 Margin="10">
         </TextBox>
     </Grid>
 </Window>

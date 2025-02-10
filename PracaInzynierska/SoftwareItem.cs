@@ -36,5 +36,8 @@ namespace PracaInzynierska
         [ObservableProperty]
         private string? parameterDirectory;
 
+        [ObservableProperty]
+        private string? currentVersion;
+
     }
 }

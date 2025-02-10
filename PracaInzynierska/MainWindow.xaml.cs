@@ -23,11 +23,9 @@ namespace PracaInzynierska
             MainCode code = new MainCode();
             DataContext = code;
             listViewPrograms.SelectionChanged += ListViewPrograms_SelectionChanged;
-            //Test();
-
         }
 
-            private void ListViewPrograms_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void ListViewPrograms_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             var mc = (MainCode)DataContext;
             mc.SelectedSoftwareItems.Clear();
@@ -42,6 +40,11 @@ namespace PracaInzynierska
                 this.installButton.Content = "Instaluj " + mc.SelectedSoftwareItems.Count.ToString() + " programy...";
             else
                 this.installButton.Content = "Wybierz programy...";
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            listViewPrograms.SelectedItems.Clear();
         }
     }
 }

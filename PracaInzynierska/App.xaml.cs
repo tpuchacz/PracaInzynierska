@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using System.Configuration;
+﻿using System.Configuration;
 using System.Data;
 using System.Windows;
 
