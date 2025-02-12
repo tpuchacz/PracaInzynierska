@@ -25,10 +25,13 @@ namespace PracaInzynierska
     public partial class MainCode : ObservableObject
     {
         [ObservableProperty]
+        private bool operationInProgress = false;
+
+        [ObservableProperty]
         private ObservableCollection<InstalledApplications> appList;
 
         [ObservableProperty]
-        private string progressText;
+        private string progressText = "Czekam na operacje...";
 
         [ObservableProperty]
         private ObservableCollection<SoftwareItem> selectedSoftwareItems;
@@ -39,13 +42,14 @@ namespace PracaInzynierska
         private ObservableCollection<SoftwareItem> softwareItems;
         public MainCode()
         {
+            AppList = new ObservableCollection<InstalledApplications>();
             SoftwareItems = new ObservableCollection<SoftwareItem>();
             FetchSoftwareItems();
             client = new HttpClient();
             SelectedSoftwareItems = new ObservableCollection<SoftwareItem>();
-            progressText = "Czekam na operacje...";
         }
 
+        [RelayCommand]
         private void FetchSoftwareItems()
         {
             ListPrograms();
@@ -69,7 +73,7 @@ namespace PracaInzynierska
                         item.DownloadLink = reader.GetString("downloadLink");
                         item.Creator = reader.GetString("companyName");
                         item.Version = reader.GetString("currentVersion");
-                        item.LastUpdate = reader.GetDateTime("updateDate").ToString("dd MMMM, yyyy"); 
+                        item.LastUpdate = reader.GetDateTime("updateDate").ToString("dd MMMM, yyyy");
                         item.Category = reader.GetString("category");
                         item.ParameterSilent = reader.GetString("parameterSilent");
                         item.ParameterDirectory = reader.GetString("parameterDir");
@@ -84,11 +88,11 @@ namespace PracaInzynierska
         }
 
         [RelayCommand]
-        public void StartInstallationProcess()
+        public async void StartInstallationProcess()
         {
             bool installed = false;
             ProgressText = string.Empty;
-            for(int i = 0; i < SelectedSoftwareItems.Count; i++)
+            for (int i = 0; i < SelectedSoftwareItems.Count; i++)
             {
                 Version newVersion = new Version(SelectedSoftwareItems[i].Version);
                 Version oldVersion;
@@ -100,15 +104,25 @@ namespace PracaInzynierska
                 {
                     oldVersion = new Version(SelectedSoftwareItems[i].CurrentVersion);
                 }
-                
+
 
                 int versionComparison = oldVersion.CompareTo(newVersion);
-                
+
                 if (versionComparison < 0)
                 {
-                    DownloadInstaller(SelectedSoftwareItems[i].DownloadLink, SelectedSoftwareItems[i].Name);
-                    var result = InstallPrograms("temp\\" + SelectedSoftwareItems[i].Name + ".exe", SelectedSoftwareItems[i].ParameterSilent);
-                    if (result)
+                    OperationInProgress = true;
+                    Task<bool> downloading = DownloadInstaller(SelectedSoftwareItems[i].DownloadLink, SelectedSoftwareItems[i].Name);
+
+                    bool downloadResult = await downloading;
+
+                    Task<bool> installing = InstallPrograms("temp\\" + SelectedSoftwareItems[i].Name + ".exe", SelectedSoftwareItems[i].ParameterSilent);
+
+                    bool installResult = await installing;
+
+                    await Task.Delay(1000); //Czekanie na wpisanie zmian do rejestru itd. Program będzie bez tego zainstalowany, ale lista się nie odświeży.
+
+                    OperationInProgress = false;
+                    if (installResult)
                     {
                         ProgressText += $"Poprawnie zainstalowano program {SelectedSoftwareItems[i].Name} w wersji {SelectedSoftwareItems[i].Version}\n";
                         installed = true;
@@ -127,23 +141,22 @@ namespace PracaInzynierska
                     ProgressText += $"Program {SelectedSoftwareItems[i].Name} posiada już najnowszą wersję!\n";
                 }
             }
-            if(installed)
+            if (installed)
             {
-                ListPrograms();
                 FetchSoftwareItems();
             }
         }
 
-        public bool DownloadInstaller(string link, string name)
+        public async Task<bool> DownloadInstaller(string link, string name)
         {
-            using (var s = client.GetStreamAsync(link))
+            using (var s = await client.GetStreamAsync(link))
             {
                 Directory.CreateDirectory("temp");
                 using (var fs = new FileStream("temp\\" + name + ".exe", FileMode.OpenOrCreate))
                 {
                     try
                     {
-                        s.Result.CopyTo(fs);
+                        await s.CopyToAsync(fs);
                         return true;
                     }
                     catch (Exception ex)
@@ -155,7 +168,7 @@ namespace PracaInzynierska
             }
         }
 
-        private bool InstallPrograms(string path, string parameters)
+        private async Task<bool> InstallPrograms(string path, string parameters)
         {
             try
             {
@@ -171,12 +184,12 @@ namespace PracaInzynierska
                 process = new Process();
                 process.StartInfo = processStartInfo;
                 process.Start();
-                while (!process.HasExited && process.Responding)
-                {
-                    Thread.Sleep(100);
-                }
 
-                return true;
+                await process.WaitForExitAsync();
+                if (process.HasExited)
+                    return true;
+                else
+                    return false;
             }
             catch (Exception ex)
             {
@@ -187,7 +200,7 @@ namespace PracaInzynierska
 
         private void ListPrograms()
         {
-            AppList = new ObservableCollection<InstalledApplications>();
+            AppList.Clear();
             string registry_key = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
             using (RegistryKey key = Registry.LocalMachine.OpenSubKey(registry_key))
             {
@@ -195,9 +208,9 @@ namespace PracaInzynierska
                 {
                     using (RegistryKey subkey = key.OpenSubKey(subkey_name))
                     {
-                        if(subkey.GetValue("DisplayName") != null)
+                        if (subkey.GetValue("DisplayName") != null)
                         {
-                            if(subkey.GetValue("DisplayVersion") != null)
+                            if (subkey.GetValue("DisplayVersion") != null)
                             {
                                 AppList.Add(new InstalledApplications() { Name = subkey.GetValue("DisplayName").ToString(), Version = subkey.GetValue("DisplayVersion").ToString() });
                             }
@@ -206,7 +219,7 @@ namespace PracaInzynierska
                                 AppList.Add(new InstalledApplications() { Name = subkey.GetValue("DisplayName").ToString() });
                             }
                         }
-                            
+
                     }
                 }
             }
