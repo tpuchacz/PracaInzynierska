@@ -1,29 +1,30 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using HandyControl.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.Win32;
-using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Runtime.CompilerServices;
+using System.Reflection.Metadata;
 using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media.Animation;
-using System.Windows.Shapes;
-using System.Windows.Threading;
+using System.Windows.Input;
 
 namespace PracaInzynierska
 {
     public partial class MainCode : ObservableObject
     {
+        string connectionString = "server=localhost;database=inz;integrated Security=True;TrustServerCertificate=true"; //W pliku konfiguracyjnym
+
+        [ObservableProperty]
+        private string installButtonText = "Wybierz programy...";
+
+        [ObservableProperty]
+        private bool canClickInstallButton = false;
+
         [ObservableProperty]
         private bool operationInProgress = false;
 
@@ -34,9 +35,11 @@ namespace PracaInzynierska
         private string progressText = "Czekam na operacje...";
 
         [ObservableProperty]
-        private ObservableCollection<SoftwareItem> selectedSoftwareItems;
+        private ObservableCollection<SoftwareItem> selectedSoftwareItems; 
 
         HttpClient client;
+
+        private bool afterInstalling = false;
 
         [ObservableProperty]
         private ObservableCollection<SoftwareItem> softwareItems;
@@ -54,13 +57,20 @@ namespace PracaInzynierska
         {
             ListPrograms();
             SoftwareItems.Clear();
-            string connectionString = "server=localhost;database=inz;integrated Security=True;TrustServerCertificate=true"; //W pliku konfiguracyjnym
 
             using (SqlConnection _con = new SqlConnection(connectionString))
             {
                 string queryStatement = "SELECT * FROM dbo.software";
 
-                _con.Open();
+                try
+                {
+                    _con.Open();
+                }
+                catch (Exception ex)
+                { 
+                    ProgressText = ex.Message;
+                }
+
                 using (var cmd = new SqlCommand(queryStatement, _con))
                 using (SqlDataReader reader = cmd.ExecuteReader())
                 {
@@ -88,7 +98,7 @@ namespace PracaInzynierska
         }
 
         [RelayCommand]
-        public async void StartInstallationProcess()
+        public async Task StartInstallationProcess()
         {
             bool installed = false;
             ProgressText = string.Empty;
@@ -115,6 +125,12 @@ namespace PracaInzynierska
 
                     bool downloadResult = await downloading;
 
+                    if (!downloadResult)
+                    {
+                        ProgressText += $"Błąd podczas instalacji {SelectedSoftwareItems[i].Name}\n";
+                        continue;
+                    }
+
                     Task<bool> installing = InstallPrograms("temp\\" + SelectedSoftwareItems[i].Name + ".exe", SelectedSoftwareItems[i].ParameterSilent);
 
                     bool installResult = await installing;
@@ -122,6 +138,7 @@ namespace PracaInzynierska
                     await Task.Delay(1000); //Czekanie na wpisanie zmian do rejestru itd. Program będzie bez tego zainstalowany, ale lista się nie odświeży.
 
                     OperationInProgress = false;
+                    afterInstalling = true;
                     if (installResult)
                     {
                         ProgressText += $"Poprawnie zainstalowano program {SelectedSoftwareItems[i].Name} w wersji {SelectedSoftwareItems[i].Version}\n";
@@ -141,27 +158,31 @@ namespace PracaInzynierska
                     ProgressText += $"Program {SelectedSoftwareItems[i].Name} posiada już najnowszą wersję!\n";
                 }
             }
-            if (installed)
+            if (installed) //Do poprawy
             {
                 FetchSoftwareItems();
+            }
+            else
+            {
+                //ProgressText = "Nie zainstalowano programów...";
             }
         }
 
         public async Task<bool> DownloadInstaller(string link, string name)
         {
-            using (var s = await client.GetStreamAsync(link))
+            using (var s = await client.GetStreamAsync(link)) //Czekanie na sprawdzenie dostępności pliku
             {
                 Directory.CreateDirectory("temp");
                 using (var fs = new FileStream("temp\\" + name + ".exe", FileMode.OpenOrCreate))
                 {
                     try
                     {
-                        await s.CopyToAsync(fs);
+                        await s.CopyToAsync(fs); //Czekanie na zapisanie pliku na dysku
                         return true;
                     }
                     catch (Exception ex)
                     {
-                        ProgressText = ex.Message;
+                        ProgressText += ex.Message + "\n";
                         return false;
                     }
                 }
@@ -186,7 +207,7 @@ namespace PracaInzynierska
                 process.Start();
 
                 await process.WaitForExitAsync();
-                if (process.HasExited)
+                if (process.HasExited)  //Do poprawy?????
                     return true;
                 else
                     return false;
@@ -201,26 +222,85 @@ namespace PracaInzynierska
         private void ListPrograms()
         {
             AppList.Clear();
-            string registry_key = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
-            using (RegistryKey key = Registry.LocalMachine.OpenSubKey(registry_key))
+            
+            string key =  @"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall";
+            string key2 = @"SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall";
+            using (RegistryKey k = Registry.LocalMachine.OpenSubKey(key))
             {
-                foreach (string subkey_name in key.GetSubKeyNames())
-                {
-                    using (RegistryKey subkey = key.OpenSubKey(subkey_name))
-                    {
-                        if (subkey.GetValue("DisplayName") != null)
-                        {
-                            if (subkey.GetValue("DisplayVersion") != null)
-                            {
-                                AppList.Add(new InstalledApplications() { Name = subkey.GetValue("DisplayName").ToString(), Version = subkey.GetValue("DisplayVersion").ToString() });
-                            }
-                            else
-                            {
-                                AppList.Add(new InstalledApplications() { Name = subkey.GetValue("DisplayName").ToString() });
-                            }
-                        }
+                AddProgramEntries(k);
+            }
+            using (RegistryKey k = Registry.LocalMachine.OpenSubKey(key2))
+            {
+                AddProgramEntries(k);
+            }
+            using (RegistryKey k = Registry.CurrentUser.OpenSubKey(key))
+            {
+                AddProgramEntries(k);
+            }
 
+
+        }
+
+        private void AddProgramEntries(RegistryKey key)
+        {
+            foreach (string subkey_name in key.GetSubKeyNames())
+            {
+                using (RegistryKey subkey = key.OpenSubKey(subkey_name))
+                {
+                    if (subkey.GetValue("DisplayName") != null)
+                    {
+                        if (subkey.GetValue("DisplayVersion") != null)
+                            AppList.Add(new InstalledApplications() { Name = subkey.GetValue("DisplayName").ToString(), Version = subkey.GetValue("DisplayVersion").ToString() });
+                        else
+                            AppList.Add(new InstalledApplications() { Name = subkey.GetValue("DisplayName").ToString() });
                     }
+                }
+            }
+        }
+
+        [RelayCommand]
+        private void SelectionChanged(object parameter)
+        {
+            SelectedSoftwareItems.Clear();
+
+            if(parameter != null)
+            {
+                IList<object> selItem = parameter as IList<object>;
+
+                foreach (var temp in selItem)
+                {
+                    SoftwareItem si = temp as SoftwareItem;
+                    SelectedSoftwareItems.Add(si);
+                }
+            }
+
+
+            if (afterInstalling)
+            {
+                afterInstalling = false;
+            }
+            else
+            {
+                ProgressText = "Czekam na operacje...";
+            }
+            
+
+            if (SelectedSoftwareItems.Count == 0)
+            {
+                CanClickInstallButton = false;
+                
+            }
+            else
+            {
+                if(SelectedSoftwareItems.Count == 1)
+                    InstallButtonText = "Zainstaluj 1 program...";
+                else
+                    InstallButtonText = "Zainstaluj " + SelectedSoftwareItems.Count + " programy...";
+                CanClickInstallButton = true;
+                ProgressText = "Do zainstalowania:\n";
+                foreach (SoftwareItem item in SelectedSoftwareItems)
+                {
+                    ProgressText += " + " + item.Name + "\n";
                 }
             }
         }
