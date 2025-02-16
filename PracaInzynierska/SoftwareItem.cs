@@ -34,5 +34,8 @@ namespace PracaInzynierska
         [ObservableProperty]
         private string? currentVersion;
 
+        [ObservableProperty]
+        private bool isHidden = false;
+
     }
 }

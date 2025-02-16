@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using System.Windows.Controls;
 
 namespace PracaInzynierska
 {
@@ -8,7 +9,7 @@ namespace PracaInzynierska
         {
             InitializeComponent();
             MainCode code = new MainCode();
-            DataContext = code;
+            DataContext = code;    
         }
 
         private void Button_Click(object sender, RoutedEventArgs e)

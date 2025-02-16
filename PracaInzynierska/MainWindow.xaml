@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase" 
         xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+        xmlns:hc="https://handyorg.github.io/handycontrol"
         mc:Ignorable="d" Title="Menadżer oprogramowania" Height="720" Width="1280" MinHeight="600" MinWidth="900" Background="LightGray">
     <Window.Resources>
         <CollectionViewSource Source="{Binding SoftwareItems}" x:Key="items">
@@ -18,17 +19,37 @@
                 Category
             </CollectionViewSource.LiveFilteringProperties>
         </CollectionViewSource>
+        
     </Window.Resources>
 
     <Grid Margin="15">
         <Grid.RowDefinitions>
-            <RowDefinition Height="3*"/>
-            <RowDefinition/>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="6*"/>
+            <RowDefinition Height="2*"/>
         </Grid.RowDefinitions>
 
-        <ListView BorderBrush="Black" BorderThickness="1" ItemsSource="{Binding Source={StaticResource items}}" x:Name="listViewPrograms"
+        <ListView Grid.Row="1" BorderBrush="Black" BorderThickness="1" ItemsSource="{Binding Source={StaticResource items}}" x:Name="listViewPrograms"
                   HorizontalAlignment="Stretch" VerticalAlignment="Stretch" SelectionMode="Multiple">
-            
+
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="Background" Value="White" />
+                    <Setter Property="Height" Value="40" />
+                    <Setter Property="BorderBrush" Value="Black" />
+                    <Setter Property="BorderThickness" Value="0.5,0,0.5,0.5" />
+                    <Setter Property="HorizontalContentAlignment" Value="Center" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsHidden}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsHidden}" Value="False">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ListView.ItemContainerStyle>
+
             <i:Interaction.Triggers>
                 <i:EventTrigger EventName="SelectionChanged">
                     <i:InvokeCommandAction Command="{Binding SelectionChangedCommand}"
@@ -40,9 +61,11 @@
                 <GridView>
                     <GridView.ColumnHeaderContainerStyle>
                         <Style TargetType="{x:Type GridViewColumnHeader}">
+                            <Setter Property="IsHitTestVisible" Value="False"/>
                             <Setter Property="FontWeight" Value="Bold"></Setter>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"></Setter>
                             <Setter Property="Foreground" Value="Black"></Setter>
-                            <Setter Property="HorizontalAlignment" Value="Stretch"></Setter>
+                            <Setter Property="Width" Value="200"></Setter>
                             <Setter Property="Background">
                                 <Setter.Value>
                                     <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -54,12 +77,12 @@
                             <Setter Property="HorizontalContentAlignment" Value="Center" />
                         </Style>
                     </GridView.ColumnHeaderContainerStyle>
-
-                    <GridViewColumn Width="200" Header="Nazwa" DisplayMemberBinding="{Binding Name}"/>
-                    <GridViewColumn Width="200" Header="Twórca" DisplayMemberBinding="{Binding Creator}"/>
-                    <GridViewColumn Width="200" Header="Ostatnia aktualizacja" DisplayMemberBinding="{Binding LastUpdate}"/>
-                    <GridViewColumn Width="200" Header="Wersja" DisplayMemberBinding="{Binding Version}"/>
-                    <GridViewColumn Width="200" Header="Obecna wersja" DisplayMemberBinding="{Binding CurrentVersion}"/>
+                    
+                    <GridViewColumn Width="auto" Header="Nazwa" DisplayMemberBinding="{Binding Name}" hc:BorderElement.Circular="True"/>
+                    <GridViewColumn Width="auto" Header="Twórca" DisplayMemberBinding="{Binding Creator}" hc:BorderElement.Circular="True"/>
+                    <GridViewColumn Width="auto" Header="Ostatnia aktualizacja" DisplayMemberBinding="{Binding LastUpdate}" hc:BorderElement.Circular="True"/>
+                    <GridViewColumn Width="auto" Header="Wersja" DisplayMemberBinding="{Binding Version}" hc:BorderElement.Circular="True"/>
+                    <GridViewColumn Width="auto" Header="Obecna wersja" DisplayMemberBinding="{Binding CurrentVersion}" hc:BorderElement.Circular="True"/>
                 </GridView>
             </ListView.View>
             <ListView.GroupStyle>
@@ -85,8 +108,8 @@
         </ListView>
         
         <TextBox Text="{Binding ProgressText}"
-         Grid.Row="1"
-         Width="500"
+         Grid.Row="2"
+         Width="400"
          IsReadOnly="True"
          HorizontalAlignment="Left"
          VerticalContentAlignment="Top"
@@ -95,15 +118,21 @@
          ScrollViewer.CanContentScroll="True"
          Margin="10,10,10,35">
         </TextBox>
-        
-        <Button Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,60,350,0"
-                Content="Odśwież" x:Name="refresh" Command="{Binding FetchSoftwareItemsCommand}"></Button>
-        <Button Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,60,210,0"
-                Content="Usuń zaznaczenie" Click="Button_Click" Command="{Binding SelectionChangedCommand}"></Button>
-        <Button Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,60,50,0"
-        Content="{Binding InstallButtonText}" x:Name="installButton" IsEnabled="{Binding CanClickInstallButton}" FocusManager.FocusedElement="{Binding ElementName=listViewPrograms}"
-        Command="{Binding StartInstallationProcessCommand}"></Button>
 
-        <ProgressBar Style="{StaticResource ProgressBarSuccessStripe}" IsIndeterminate="{Binding OperationInProgress}" Grid.Row="1" Height="25" VerticalAlignment="Bottom"></ProgressBar>
+        <hc:SearchBar Grid.Row="0" Height="30" Width="200" Margin="0,-20,480,0" HorizontalAlignment="Right" IsRealTime="True"
+                      Command="{Binding SearchCommand}" CommandParameter="{Binding Text,RelativeSource={RelativeSource Self}}"></hc:SearchBar>
+        
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Grid.Row="2" VerticalAlignment="Center" Margin="10">
+            <Button HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,10,0"
+                    Content="Odśwież" x:Name="refresh" Command="{Binding FetchSoftwareItemsCommand}"></Button>
+            <Button HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,10,0"
+                    Content="Usuń zaznaczenie" Click="Button_Click" Command="{Binding SelectionChangedCommand}"></Button>
+            <Button HorizontalAlignment="Right" VerticalAlignment="Top" Content="{Binding InstallButtonText}" x:Name="installButton"
+                    IsEnabled="{Binding CanClickInstallButton}" FocusManager.FocusedElement="{Binding ElementName=listViewPrograms}"
+                    Command="{Binding StartInstallationProcessCommand}"></Button>
+        </StackPanel>
+        
+
+        <ProgressBar Style="{StaticResource ProgressBarSuccessStripe}" IsIndeterminate="{Binding OperationInProgress}" Grid.Row="2" Height="25" VerticalAlignment="Bottom"></ProgressBar>
     </Grid>
 </Window>

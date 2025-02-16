@@ -65,33 +65,32 @@ namespace PracaInzynierska
                 try
                 {
                     _con.Open();
+                    using (var cmd = new SqlCommand(queryStatement, _con))
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var item = new SoftwareItem();
+                            item.Name = reader.GetString("name");
+                            item.Version = reader.GetString("currentVersion");
+                            item.WebsiteLink = reader.GetString("websiteLink");
+                            item.DownloadLink = reader.GetString("downloadLink");
+                            item.Creator = reader.GetString("companyName");
+                            item.Version = reader.GetString("currentVersion");
+                            item.LastUpdate = reader.GetDateTime("updateDate").ToString("dd MMMM, yyyy");
+                            item.Category = reader.GetString("category");
+                            item.ParameterSilent = reader.GetString("parameterSilent");
+                            item.ParameterDirectory = reader.GetString("parameterDir");
+                            InstalledApplications installedApp = InstalledApplications.FindApp(item.Name, AppList);
+                            if (installedApp != null)
+                                item.CurrentVersion = installedApp.Version;
+                            SoftwareItems.Add(item);
+                        }
+                    }
                 }
                 catch (Exception ex)
                 { 
                     ProgressText = ex.Message;
-                }
-
-                using (var cmd = new SqlCommand(queryStatement, _con))
-                using (SqlDataReader reader = cmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        var item = new SoftwareItem();
-                        item.Name = reader.GetString("name");
-                        item.Version = reader.GetString("currentVersion");
-                        item.WebsiteLink = reader.GetString("websiteLink");
-                        item.DownloadLink = reader.GetString("downloadLink");
-                        item.Creator = reader.GetString("companyName");
-                        item.Version = reader.GetString("currentVersion");
-                        item.LastUpdate = reader.GetDateTime("updateDate").ToString("dd MMMM, yyyy");
-                        item.Category = reader.GetString("category");
-                        item.ParameterSilent = reader.GetString("parameterSilent");
-                        item.ParameterDirectory = reader.GetString("parameterDir");
-                        InstalledApplications installedApp = InstalledApplications.FindApp(item.Name, AppList);
-                        if (installedApp != null)
-                            item.CurrentVersion = installedApp.Version;
-                        SoftwareItems.Add(item);
-                    }
                 }
             }
             OnPropertyChanged(nameof(SoftwareItems));
@@ -301,6 +300,41 @@ namespace PracaInzynierska
                 foreach (SoftwareItem item in SelectedSoftwareItems)
                 {
                     ProgressText += " + " + item.Name + "\n";
+                }
+            }
+        }
+
+        [RelayCommand]
+        private void Search(string parameter)
+        {
+            if(parameter != String.Empty)
+            {
+                parameter = parameter.ToLower();
+                foreach (SoftwareItem item in SoftwareItems)
+                {
+                    if (item.Name.ToLower().Contains(parameter))
+                    {
+                        item.IsHidden = false;
+                    }
+                    else if (item.Category.ToLower().Contains(parameter))
+                    {
+                        item.IsHidden = false;
+                    }
+                    else if(item.Creator.ToLower().Contains(parameter))
+                    {
+                        item.IsHidden = false;
+                    }
+                    else
+                    {
+                        item.IsHidden = true;
+                    }
+                }
+            }
+            else
+            {
+                foreach (SoftwareItem item in SoftwareItems)
+                {
+                    item.IsHidden = false;
                 }
             }
         }
