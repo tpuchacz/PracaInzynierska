@@ -60,7 +60,8 @@ namespace PracaInzynierska
 
             using (SqlConnection _con = new SqlConnection(connectionString))
             {
-                string queryStatement = "SELECT * FROM dbo.software";
+                string queryStatement = "SELECT s.softwareId, s.[name], s.[websiteLink], s.[downloadLink], s.[companyName], s.[currentVersion], s.[updateDate], s.[category]," +
+                    "s.[parameterSilent], s.[parameterDir], t.downloadCount FROM ((dbo.software as s INNER JOIN dbo.telemetryData as t ON s.softwareId = t.telemetryId))";
 
                 try
                 {
@@ -71,6 +72,7 @@ namespace PracaInzynierska
                         while (reader.Read())
                         {
                             var item = new SoftwareItem();
+                            item.SoftwareId = reader.GetInt32("softwareId");
                             item.Name = reader.GetString("name");
                             item.Version = reader.GetString("currentVersion");
                             item.WebsiteLink = reader.GetString("websiteLink");
@@ -84,16 +86,36 @@ namespace PracaInzynierska
                             InstalledApplications installedApp = InstalledApplications.FindApp(item.Name, AppList);
                             if (installedApp != null)
                                 item.CurrentVersion = installedApp.Version;
+                            item.DownloadCount = reader.GetInt32("downloadCount");
                             SoftwareItems.Add(item);
                         }
                     }
                 }
                 catch (Exception ex)
                 { 
-                    ProgressText = ex.Message;
+                    ProgressText = "Wystąpił błąd:\n" + ex.Message;
                 }
+                finally { _con.Close(); }
             }
             OnPropertyChanged(nameof(SoftwareItems));
+        }
+
+        private void IncreaseTelemetryData(int id)
+        {
+            using (SqlConnection _con = new SqlConnection(connectionString))
+            {
+                SqlCommand cmd = new SqlCommand($"UPDATE dbo.telemetryData SET downloadCount=downloadCount + 1 WHERE telemetryId={id}", _con);
+                try
+                {
+                    _con.Open();
+                    cmd.ExecuteNonQuery();
+                }
+                catch (Exception ex)
+                {
+                    ProgressText = ex.Message;
+                }
+                finally { _con.Close(); }
+            }
         }
 
         [RelayCommand]
@@ -120,17 +142,30 @@ namespace PracaInzynierska
                 if (versionComparison < 0)
                 {
                     OperationInProgress = true;
+                    
                     Task<bool> downloading = DownloadInstaller(SelectedSoftwareItems[i].DownloadLink, SelectedSoftwareItems[i].Name);
 
                     bool downloadResult = await downloading;
 
                     if (!downloadResult)
                     {
-                        ProgressText += $"Błąd podczas instalacji {SelectedSoftwareItems[i].Name}\n";
+                        ProgressText += $"Błąd podczas pobierania {SelectedSoftwareItems[i].Name}\n";
                         continue;
                     }
 
-                    Task<bool> installing = InstallPrograms("temp\\" + SelectedSoftwareItems[i].Name + ".exe", SelectedSoftwareItems[i].ParameterSilent);
+                    ProgressText += $"Instaluje {SelectedSoftwareItems[i].Name}...\n";
+
+                    Task<bool> installing;
+
+                    if (SelectedSoftwareItems[i].ParameterDirectory != String.Empty)
+                    {
+                        installing = InstallPrograms("temp\\" + SelectedSoftwareItems[i].Name + ".exe", SelectedSoftwareItems[i].ParameterSilent +
+                            " " + SelectedSoftwareItems[i].ParameterDirectory + "C:\\ManagerApps\\" + SelectedSoftwareItems[i].Name);
+                    }
+                    else
+                    {
+                        installing = InstallPrograms("temp\\" + SelectedSoftwareItems[i].Name + ".exe", SelectedSoftwareItems[i].ParameterSilent);
+                    }
 
                     bool installResult = await installing;
 
@@ -142,6 +177,7 @@ namespace PracaInzynierska
                     {
                         ProgressText += $"Poprawnie zainstalowano program {SelectedSoftwareItems[i].Name} w wersji {SelectedSoftwareItems[i].Version}\n";
                         installed = true;
+                        IncreaseTelemetryData(SelectedSoftwareItems[i].SoftwareId);
                     }
                     else
                     {
@@ -169,22 +205,31 @@ namespace PracaInzynierska
 
         public async Task<bool> DownloadInstaller(string link, string name)
         {
-            using (var s = await client.GetStreamAsync(link)) //Czekanie na sprawdzenie dostępności pliku
+            if (!File.Exists("temp\\" + name + ".exe"))
             {
-                Directory.CreateDirectory("temp");
-                using (var fs = new FileStream("temp\\" + name + ".exe", FileMode.OpenOrCreate))
+                ProgressText += $"Pobieram {name}...\n";
+                using (var s = await client.GetStreamAsync(link)) //Czekanie na sprawdzenie dostępności pliku
                 {
-                    try
+                    Directory.CreateDirectory("temp");
+                    using (var fs = new FileStream("temp\\" + name + ".exe", FileMode.OpenOrCreate))
                     {
-                        await s.CopyToAsync(fs); //Czekanie na zapisanie pliku na dysku
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        ProgressText += ex.Message + "\n";
-                        return false;
+                        try
+                        {
+                            await s.CopyToAsync(fs); //Czekanie na zapisanie pliku na dysku
+                            return true;
+                        }
+                        catch (Exception ex)
+                        {
+                            ProgressText += ex.Message + "\n";
+                            return false;
+                        }
                     }
                 }
+            }
+            else
+            {
+                ProgressText += $"Plik instalacyjny dla {name} już istnieje...\n";
+                return true;
             }
         }
 
@@ -206,8 +251,12 @@ namespace PracaInzynierska
                 process.Start();
 
                 await process.WaitForExitAsync();
-                if (process.HasExited)  //Do poprawy?????
-                    return true;
+                if (process.HasExited)
+                {
+                    if(process.ExitCode == 0)
+                        return true;
+                    else return false;
+                }
                 else
                     return false;
             }

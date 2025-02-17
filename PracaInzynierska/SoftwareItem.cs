@@ -5,6 +5,9 @@ namespace PracaInzynierska
     public partial class SoftwareItem : ObservableObject
     {
         [ObservableProperty]
+        private int softwareId;
+
+        [ObservableProperty]
         private string? name;
 
         [ObservableProperty]
@@ -36,6 +39,9 @@ namespace PracaInzynierska
 
         [ObservableProperty]
         private bool isHidden = false;
+
+        [ObservableProperty]
+        private int downloadCount;
 
     }
 }

@@ -83,6 +83,7 @@
                     <GridViewColumn Width="auto" Header="Ostatnia aktualizacja" DisplayMemberBinding="{Binding LastUpdate}" hc:BorderElement.Circular="True"/>
                     <GridViewColumn Width="auto" Header="Wersja" DisplayMemberBinding="{Binding Version}" hc:BorderElement.Circular="True"/>
                     <GridViewColumn Width="auto" Header="Obecna wersja" DisplayMemberBinding="{Binding CurrentVersion}" hc:BorderElement.Circular="True"/>
+                    <GridViewColumn Width="auto" Header="Liczba pobrań" DisplayMemberBinding="{Binding DownloadCount}" hc:BorderElement.Circular="True"/>
                 </GridView>
             </ListView.View>
             <ListView.GroupStyle>
