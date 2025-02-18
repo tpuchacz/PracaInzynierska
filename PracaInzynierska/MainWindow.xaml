@@ -8,7 +8,7 @@
         xmlns:hc="https://handyorg.github.io/handycontrol"
         mc:Ignorable="d" Title="Menadżer oprogramowania" Height="720" Width="1280" MinHeight="600" MinWidth="900" Background="LightGray">
     <Window.Resources>
-        <CollectionViewSource Source="{Binding SoftwareItems}" x:Key="items">
+        <CollectionViewSource Source="{Binding CurrentSoftwareItems}" x:Key="items">
             <CollectionViewSource.GroupDescriptions>
                 <PropertyGroupDescription PropertyName="Category"/>
             </CollectionViewSource.GroupDescriptions>
@@ -19,7 +19,6 @@
                 Category
             </CollectionViewSource.LiveFilteringProperties>
         </CollectionViewSource>
-        
     </Window.Resources>
 
     <Grid Margin="15">
@@ -29,8 +28,29 @@
             <RowDefinition Height="2*"/>
         </Grid.RowDefinitions>
 
+        <hc:SearchBar Height="30" Width="200" HorizontalAlignment="Center" IsRealTime="True"
+              Command="{Binding SearchCommand}" CommandParameter="{Binding Text,RelativeSource={RelativeSource Self}}"></hc:SearchBar>
+
+        <StackPanel HorizontalAlignment="Right">
+            <RadioButton Content="Szablony" Margin="5" GroupName="TemplateOrList" IsEnabled="{Binding ProgramsShown}">
+                <i:Interaction.Triggers>
+                    <i:EventTrigger EventName="Checked">
+                        <i:InvokeCommandAction Command="{Binding ShowTemplatesCommand}"/>
+                    </i:EventTrigger>
+                </i:Interaction.Triggers>
+            </RadioButton>
+            <RadioButton Content="Wszystkie programy" GroupName="TemplateOrList" Margin="5" IsEnabled="{Binding TemplatesShown}">
+                <i:Interaction.Triggers>
+                    <i:EventTrigger EventName="Checked">
+                        <i:InvokeCommandAction Command="{Binding ShowProgramListCommand}" />
+                    </i:EventTrigger>
+                </i:Interaction.Triggers>
+            </RadioButton>
+        </StackPanel>
+        
+        
         <ListView Grid.Row="1" BorderBrush="Black" BorderThickness="1" ItemsSource="{Binding Source={StaticResource items}}" x:Name="listViewPrograms"
-                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" SelectionMode="Multiple">
+                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" SelectionMode="Multiple" IsHitTestVisible="{Binding EnableControls}">
 
             <ListView.ItemContainerStyle>
                 <Style TargetType="ListViewItem">
@@ -107,7 +127,7 @@
                 </GroupStyle>
             </ListView.GroupStyle>
         </ListView>
-        
+
         <TextBox Text="{Binding ProgressText}"
          Grid.Row="2"
          Width="400"
@@ -120,13 +140,10 @@
          Margin="10,10,10,35">
         </TextBox>
 
-        <hc:SearchBar Grid.Row="0" Height="30" Width="200" Margin="0,-20,480,0" HorizontalAlignment="Right" IsRealTime="True"
-                      Command="{Binding SearchCommand}" CommandParameter="{Binding Text,RelativeSource={RelativeSource Self}}"></hc:SearchBar>
-        
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Grid.Row="2" VerticalAlignment="Center" Margin="10">
-            <Button HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,10,0"
+            <Button HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,10,0" IsEnabled="{Binding EnableControls}"
                     Content="Odśwież" x:Name="refresh" Command="{Binding FetchSoftwareItemsCommand}"></Button>
-            <Button HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,10,0"
+            <Button HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,10,0" IsEnabled="{Binding EnableControls}"
                     Content="Usuń zaznaczenie" Click="Button_Click" Command="{Binding SelectionChangedCommand}"></Button>
             <Button HorizontalAlignment="Right" VerticalAlignment="Top" Content="{Binding InstallButtonText}" x:Name="installButton"
                     IsEnabled="{Binding CanClickInstallButton}" FocusManager.FocusedElement="{Binding ElementName=listViewPrograms}"
