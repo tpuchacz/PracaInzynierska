@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using System.Collections.ObjectModel;
 
 namespace PracaInzynierska
 {
@@ -42,6 +43,16 @@ namespace PracaInzynierska
 
         [ObservableProperty]
         private int downloadCount;
+        
 
+        public static bool IdExistsInCollection(ObservableCollection<SoftwareItem> items, int id)
+        {
+            foreach (SoftwareItem item in items)
+            {
+                if (item.SoftwareId == id)
+                    return true;
+            }
+            return false;
+        }
     }
 }

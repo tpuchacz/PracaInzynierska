@@ -5,6 +5,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Win32;
 using System.Collections;
 using System.Collections.ObjectModel;
+using System.Configuration;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
@@ -19,7 +20,7 @@ namespace PracaInzynierska
 {
     public partial class MainCode : ObservableObject
     {
-        string connectionString = "server=localhost;database=inz;integrated Security=True;TrustServerCertificate=true"; //W pliku konfiguracyjnym
+        string connectionString; //W pliku konfiguracyjnym
 
         [ObservableProperty]
         private string installButtonText = "Wybierz programy...";
@@ -60,21 +61,25 @@ namespace PracaInzynierska
 
         //[ObservableProperty]
         private ObservableCollection<SoftwareItem> templateItems;
+
+        Utilities utils;
         public MainCode()
         {
+            connectionString = ConfigurationManager.AppSettings["connectionString"].ToString();
+            utils = new Utilities();
+            client = new HttpClient();
             AppList = new ObservableCollection<InstalledApplications>();
             softwareItems = new ObservableCollection<SoftwareItem>();
             templateItems = new ObservableCollection<SoftwareItem>();
             CurrentSoftwareItems = new ObservableCollection<SoftwareItem>();
             FetchSoftwareItems();
-            client = new HttpClient();
             SelectedSoftwareItems = new ObservableCollection<SoftwareItem>();
         }
 
         [RelayCommand]
         private void FetchSoftwareItems()
         {
-            ListPrograms();
+            utils.ListPrograms(AppList);
             softwareItems.Clear();
 
             using (SqlConnection _con = new SqlConnection(connectionString))
@@ -91,7 +96,8 @@ namespace PracaInzynierska
                         while (reader.Read())
                         {
                             var item = new SoftwareItem();
-                            softwareItems.Add(ReadSoftwareItem(reader, false, ""));
+                            
+                            softwareItems.Add(utils.ReadSoftwareItem(reader, AppList, false, ""));
                         }
                     }
 
@@ -102,8 +108,12 @@ namespace PracaInzynierska
                 }
                 finally { _con.Close(); }
             }
+            templateItems.Clear();
             LoadTemplates();
-            CurrentSoftwareItems = softwareItems.Clone();
+            if(programsShown)
+                CurrentSoftwareItems = softwareItems.Clone();
+            else
+                CurrentSoftwareItems = templateItems.Clone();
             OnPropertyChanged(nameof(CurrentSoftwareItems));
         }
 
@@ -128,30 +138,6 @@ namespace PracaInzynierska
                 TemplatesShown = false;
                 CurrentSoftwareItems = softwareItems.Clone();
             }
-        }
-
-        private SoftwareItem ReadSoftwareItem(SqlDataReader reader, bool isTemplate, string templateName)
-        {
-            var item = new SoftwareItem();
-            item.SoftwareId = reader.GetInt32("softwareId");
-            item.Name = reader.GetString("name");
-            item.Version = reader.GetString("currentVersion");
-            item.WebsiteLink = reader.GetString("websiteLink");
-            item.DownloadLink = reader.GetString("downloadLink");
-            item.Creator = reader.GetString("companyName");
-            item.Version = reader.GetString("currentVersion");
-            item.LastUpdate = reader.GetDateTime("updateDate").ToString("dd MMMM, yyyy");
-            if(isTemplate)
-                item.Category = templateName;
-            else
-                item.Category = reader.GetString("category");
-            item.ParameterSilent = reader.GetString("parameterSilent");
-            item.ParameterDirectory = reader.GetString("parameterDir");
-            InstalledApplications installedApp = InstalledApplications.FindApp(item.Name, AppList);
-            if (installedApp != null)
-                item.CurrentVersion = installedApp.Version;
-            item.DownloadCount = reader.GetInt32("downloadCount");
-            return item;
         }
 
         private void LoadTemplates()
@@ -182,7 +168,7 @@ namespace PracaInzynierska
                         {
                             while (reader.Read())
                             {
-                                templateItems.Add(ReadSoftwareItem(reader, true, templateNames[i]));
+                                templateItems.Add(utils.ReadSoftwareItem(reader, AppList, true, templateNames[i]));
                             }
                         }
                     }
@@ -379,42 +365,6 @@ namespace PracaInzynierska
             }
         }
 
-        private void ListPrograms()
-        {
-            AppList.Clear();
-            
-            string key =  @"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall";
-            string key2 = @"SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall";
-            using (RegistryKey k = Registry.LocalMachine.OpenSubKey(key))
-            {
-                AddProgramEntries(k);
-            }
-            using (RegistryKey k = Registry.LocalMachine.OpenSubKey(key2))
-            {
-                AddProgramEntries(k);
-            }
-            using (RegistryKey k = Registry.CurrentUser.OpenSubKey(key))
-            {
-                AddProgramEntries(k);
-            }
-        }
-
-        private void AddProgramEntries(RegistryKey key)
-        {
-            foreach (string subkey_name in key.GetSubKeyNames())
-            {
-                using (RegistryKey subkey = key.OpenSubKey(subkey_name))
-                {
-                    if (subkey.GetValue("DisplayName") != null)
-                    {
-                        if (subkey.GetValue("DisplayVersion") != null)
-                            AppList.Add(new InstalledApplications() { Name = subkey.GetValue("DisplayName").ToString(), Version = subkey.GetValue("DisplayVersion").ToString() });
-                        else
-                            AppList.Add(new InstalledApplications() { Name = subkey.GetValue("DisplayName").ToString() });
-                    }
-                }
-            }
-        }
 
         [RelayCommand]
         private void SelectionChanged(object parameter)
@@ -428,10 +378,10 @@ namespace PracaInzynierska
                 foreach (var temp in selItem)
                 {
                     SoftwareItem si = temp as SoftwareItem;
-                    SelectedSoftwareItems.Add(si);
+                    if(!SoftwareItem.IdExistsInCollection(SelectedSoftwareItems, si.SoftwareId))
+                        SelectedSoftwareItems.Add(si);
                 }
             }
-
 
             if (afterInstalling)
             {
@@ -441,8 +391,7 @@ namespace PracaInzynierska
             {
                 ProgressText = "Czekam na operacje...";
             }
-            
-
+  
             if (SelectedSoftwareItems.Count == 0)
             {
                 CanClickInstallButton = false;

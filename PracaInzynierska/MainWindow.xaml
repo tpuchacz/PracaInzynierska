@@ -141,10 +141,12 @@
         </TextBox>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Grid.Row="2" VerticalAlignment="Center" Margin="10">
-            <Button HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,10,0" IsEnabled="{Binding EnableControls}"
+            <Button HorizontalAlignment="Right" VerticalAlignment="Top" IsEnabled="{Binding EnableControls}"
                     Content="Odśwież" x:Name="refresh" Command="{Binding FetchSoftwareItemsCommand}"></Button>
-            <Button HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,10,0" IsEnabled="{Binding EnableControls}"
+            <hc:Divider LineStrokeThickness="2" LineStroke="#0c612e" Orientation="Vertical" MaxHeight="16"/>
+            <Button HorizontalAlignment="Right" VerticalAlignment="Top" IsEnabled="{Binding EnableControls}"
                     Content="Usuń zaznaczenie" Click="Button_Click" Command="{Binding SelectionChangedCommand}"></Button>
+            <hc:Divider LineStrokeThickness="2" LineStroke="#0c612e" Orientation="Vertical" MaxHeight="16"/>
             <Button HorizontalAlignment="Right" VerticalAlignment="Top" Content="{Binding InstallButtonText}" x:Name="installButton"
                     IsEnabled="{Binding CanClickInstallButton}" FocusManager.FocusedElement="{Binding ElementName=listViewPrograms}"
                     Command="{Binding StartInstallationProcessCommand}"></Button>
