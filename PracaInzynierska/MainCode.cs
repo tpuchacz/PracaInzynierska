@@ -373,11 +373,13 @@ namespace PracaInzynierska
                 process = new Process();
                 process.StartInfo = processStartInfo;
                 process.Start();
+                    
 
                 await process.WaitForExitAsync();
 
                 string appName = Path.GetFileNameWithoutExtension(path);
                 utils.ListPrograms(AppList);
+
                 if (InstalledApplications.FindApp(appName, AppList) != null)
                 {
                     return true;

@@ -20,7 +20,7 @@ namespace PracaInzynierska
         {
             for (int i = 0; i < apps.Count; i++)
             {
-                if (apps[i].Name.Contains(name))
+                if (apps[i].Name.ToLower().Contains(name.ToLower()))
                     return apps[i];
             }
             return null;
