@@ -14,6 +14,7 @@ using System.Net.Http;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Text;
+using System.Threading;
 using System.Windows.Input;
 
 namespace PracaInzynierska
@@ -230,7 +231,7 @@ namespace PracaInzynierska
 
                     OperationInProgress = true;
                     
-                    Task<bool> downloading = DownloadInstaller(SelectedSoftwareItems[i].DownloadLink, SelectedSoftwareItems[i].Name);
+                    Task<bool> downloading = DownloadInstaller(SelectedSoftwareItems[i].DownloadLink, SelectedSoftwareItems[i].Name, newVersion);
 
                     bool downloadResult = await downloading;
 
@@ -255,9 +256,6 @@ namespace PracaInzynierska
                     }
 
                     bool installResult = await installing;
-
-                    await Task.Delay(1000); //Czekanie na wpisanie zmian do rejestru itd. Program będzie bez tego zainstalowany, ale lista się nie odświeży.
-
 
                     OperationInProgress = false;
                     afterInstalling = true;
@@ -298,33 +296,62 @@ namespace PracaInzynierska
             EnableControls = true;
         }
 
-        public async Task<bool> DownloadInstaller(string link, string name)
+        public async Task<bool> DownloadInstaller(string link, string name, Version fileVersion)
         {
-            if (!File.Exists("temp\\" + name + ".exe"))
+            string filePath = "temp\\" + name + ".exe";
+            if (!File.Exists(filePath))
             {
                 ProgressText += $"Pobieram {name}...\n";
-                using (var s = await client.GetStreamAsync(link)) //Czekanie na sprawdzenie dostępności pliku
-                {
-                    Directory.CreateDirectory("temp");
-                    using (var fs = new FileStream("temp\\" + name + ".exe", FileMode.OpenOrCreate))
-                    {
-                        try
-                        {
-                            await s.CopyToAsync(fs); //Czekanie na zapisanie pliku na dysku
-                            return true;
-                        }
-                        catch (Exception ex)
-                        {
-                            ProgressText += ex.Message + "\n";
-                            return false;
-                        }
-                    }
-                }
+                Directory.CreateDirectory("temp");
+                var result = await DownloadFile(link, filePath);
+                return result;
             }
             else
             {
-                ProgressText += $"\tPlik instalacyjny dla {name} już istnieje...\n";
-                return true;
+                FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(Path.Combine(Environment.CurrentDirectory, filePath));
+                if(fvi.FileVersion == null)
+                {
+                    ProgressText += $"Pobieram {name}...\n";
+                    var result = await DownloadFile(link, filePath);
+                    return result;
+                }
+                else
+                {
+                    Version currentInstallerVersion = new Version(fvi.FileVersion);
+                    int versionComparison = currentInstallerVersion.CompareTo(fileVersion);
+                    if (versionComparison < 0)
+                    {
+                        ProgressText += $"Pobieram {name}...\n";
+                        var result = await DownloadFile(link, filePath);
+                        return result;
+                    }
+                    else
+                    {
+                        ProgressText += $"\tPlik instalacyjny dla {name} już istnieje...\n";
+                        return true;
+                    }
+                }
+            }
+        }
+
+        private async Task<bool> DownloadFile(string link, string filePath)
+        {
+            using (var s = await client.GetStreamAsync(link)) //Czekanie na sprawdzenie dostępności pliku
+            {
+                Directory.CreateDirectory("temp");
+                using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
+                {
+                    try
+                    {
+                        await s.CopyToAsync(fs); //Czekanie na zapisanie pliku na dysku
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProgressText += ex.Message + "\n";
+                        return false;
+                    }
+                }
             }
         }
 
@@ -348,7 +375,9 @@ namespace PracaInzynierska
                 process.Start();
 
                 await process.WaitForExitAsync();
-                string appName = new DirectoryInfo(path).Name;
+
+                string appName = Path.GetFileNameWithoutExtension(path);
+                utils.ListPrograms(AppList);
                 if (InstalledApplications.FindApp(appName, AppList) != null)
                 {
                     return true;

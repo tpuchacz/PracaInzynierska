@@ -54,8 +54,6 @@ namespace PracaInzynierska
                             break;
                         }
                     }
-
-                    //HandyControl.Controls.MessageBox.Show("A new version has been detected! Do you want to update?", "Title", MessageBoxButton.YesNo, MessageBoxImage.Question);
                 }
                 else if(e.Args[i] == "/CheckForUpdates") //Sprawdź dostępność aktualizacji jednorazowo
                 {

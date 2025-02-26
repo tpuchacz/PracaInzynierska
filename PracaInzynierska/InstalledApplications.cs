@@ -18,7 +18,12 @@ namespace PracaInzynierska
 
         public static InstalledApplications FindApp(string name, ObservableCollection<InstalledApplications> apps)
         {
-            return apps.FirstOrDefault(a => a.Name.ToLower().Contains(name.ToLower()));
+            for (int i = 0; i < apps.Count; i++)
+            {
+                if (apps[i].Name.Contains(name))
+                    return apps[i];
+            }
+            return null;
         }
     }
 }
