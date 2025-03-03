@@ -16,6 +16,7 @@ using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace PracaInzynierska
 {
@@ -57,15 +58,14 @@ namespace PracaInzynierska
         [ObservableProperty]
         private ObservableCollection<SoftwareItem> currentSoftwareItems;
 
-        //[ObservableProperty]
         private ObservableCollection<SoftwareItem> softwareItems;
 
-        //[ObservableProperty]
         private ObservableCollection<SoftwareItem> templateItems;
 
         Utilities utils;
         public MainCode()
         {
+            int renderingTier = (RenderCapability.Tier >> 16);
             connectionString = ConfigurationManager.AppSettings["connectionString"].ToString();
             utils = new Utilities();
             client = new HttpClient();
@@ -238,6 +238,7 @@ namespace PracaInzynierska
                     if (!downloadResult)
                     {
                         ProgressText += $"Błąd podczas pobierania {SelectedSoftwareItems[i].Name}\n";
+                        OperationInProgress = false;
                         continue;
                     }
 
@@ -281,7 +282,7 @@ namespace PracaInzynierska
                     ProgressText += $"-Program {SelectedSoftwareItems[i].Name} posiada już najnowszą wersję!\n";
                 }
             }
-            if (installed) //Do poprawy
+            if (installed)
             {
                 FetchSoftwareItems();
             }
@@ -336,22 +337,30 @@ namespace PracaInzynierska
 
         private async Task<bool> DownloadFile(string link, string filePath)
         {
-            using (var s = await client.GetStreamAsync(link)) //Czekanie na sprawdzenie dostępności pliku
+            try
             {
-                Directory.CreateDirectory("temp");
-                using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
+                using (var s = await client.GetStreamAsync(link)) //Czekanie na sprawdzenie dostępności pliku
                 {
-                    try
+                    Directory.CreateDirectory("temp");
+                    using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
                     {
-                        await s.CopyToAsync(fs); //Czekanie na zapisanie pliku na dysku
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        ProgressText += ex.Message + "\n";
-                        return false;
+                        try
+                        {
+                            await s.CopyToAsync(fs); //Czekanie na zapisanie pliku na dysku
+                            return true;
+                        }
+                        catch (Exception ex)
+                        {
+                            ProgressText += ex.Message + "\n";
+                            return false;
+                        }
                     }
                 }
+            }
+            catch(Exception ex)
+            {
+                ProgressText += ex.Message + "\n";
+                return false;
             }
         }
 
@@ -366,9 +375,6 @@ namespace PracaInzynierska
                 processStartInfo.CreateNoWindow = true;
                 processStartInfo.Arguments = parameters;
                 processStartInfo.FileName = path;
-
-                processStartInfo.RedirectStandardError = true;
-                processStartInfo.RedirectStandardOutput = true;
 
                 process = new Process();
                 process.StartInfo = processStartInfo;

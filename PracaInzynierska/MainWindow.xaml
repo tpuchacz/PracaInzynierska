@@ -31,7 +31,7 @@
         <hc:SearchBar Height="30" Width="200" HorizontalAlignment="Center" IsRealTime="True"
               Command="{Binding SearchCommand}" CommandParameter="{Binding Text,RelativeSource={RelativeSource Self}}"></hc:SearchBar>
 
-        <StackPanel HorizontalAlignment="Right">
+        <StackPanel HorizontalAlignment="Right" IsEnabled="{Binding EnableControls}">
             <RadioButton Content="Szablony" Margin="5" GroupName="TemplateOrList" IsEnabled="{Binding ProgramsShown}">
                 <i:Interaction.Triggers>
                     <i:EventTrigger EventName="Checked">
