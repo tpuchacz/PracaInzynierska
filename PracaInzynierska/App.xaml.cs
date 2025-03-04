@@ -118,11 +118,11 @@ namespace PracaInzynierska
         {
             using (TaskService ts = new TaskService())
             {
-                Microsoft.Win32.TaskScheduler.Task task = ts.FindTask("SoftwareManagerUpdateChecker");
+                string taskName = "SoftwareManagerUpdateChecker";
+                Microsoft.Win32.TaskScheduler.Task task = ts.FindTask(taskName);
                 if (task != null)
-                {
-                    ts.RootFolder.DeleteTask("SoftwareManagerUpdateChecker");
-                }
+                    ts.RootFolder.DeleteTask(taskName);
+
                 TaskDefinition td = ts.NewTask();
                 td.RegistrationInfo.Description = "Zdarzenie sprawdzające dostępność aktualizacji programów z listy menadżera oprogramowania";
                 td.Principal.RunLevel = TaskRunLevel.Highest;
@@ -134,9 +134,9 @@ namespace PracaInzynierska
 
 
                 td.Triggers.Add(dailyTrigger);
-                td.Actions.Add(new ExecAction(Directory.GetCurrentDirectory() + "\\PracaInzynierska.exe", "/CheckForUpdates", ""));
+                td.Actions.Add(new ExecAction(Directory.GetCurrentDirectory() + "\\SoftwareManager.exe", "/CheckForUpdates", ""));
 
-                ts.RootFolder.RegisterTaskDefinition(@"SoftwareManagerUpdateChecker", td);
+                ts.RootFolder.RegisterTaskDefinition(@taskName, td);
             }
         }
     }

@@ -65,7 +65,6 @@ namespace PracaInzynierska
         Utilities utils;
         public MainCode()
         {
-            int renderingTier = (RenderCapability.Tier >> 16);
             connectionString = ConfigurationManager.AppSettings["connectionString"].ToString();
             utils = new Utilities();
             client = new HttpClient();
