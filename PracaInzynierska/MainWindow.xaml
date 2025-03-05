@@ -129,6 +129,7 @@
         </ListView>
 
         <TextBox Text="{Binding ProgressText}"
+         TextWrapping="WrapWithOverflow"
          Grid.Row="2"
          Width="400"
          IsReadOnly="True"
@@ -142,7 +143,7 @@
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Grid.Row="2" VerticalAlignment="Center" Margin="10">
             <Button HorizontalAlignment="Right" VerticalAlignment="Top" IsEnabled="{Binding EnableControls}"
-                    Content="Odśwież" x:Name="refresh" Command="{Binding FetchSoftwareItemsCommand}"></Button>
+                    Content="Odśwież" x:Name="refresh" Command="{Binding CallFetchSoftwareItemsCommand}"></Button>
             <hc:Divider LineStrokeThickness="2" LineStroke="#0c612e" Orientation="Vertical" MaxHeight="16"/>
             <Button HorizontalAlignment="Right" VerticalAlignment="Top" IsEnabled="{Binding EnableControls}"
                     Content="Usuń zaznaczenie" Click="Button_Click" Command="{Binding SelectionChangedCommand}"></Button>

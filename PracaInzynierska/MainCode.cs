@@ -11,6 +11,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Text;
@@ -68,19 +69,41 @@ namespace PracaInzynierska
             connectionString = ConfigurationManager.AppSettings["connectionString"].ToString();
             utils = new Utilities();
             client = new HttpClient();
+            string customUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36";
+            client.DefaultRequestHeaders.Add("User-Agent", customUserAgent);
+
+            //client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; SoftwareManagerPuchacz/1.0)");
             AppList = new ObservableCollection<InstalledApplications>();
             softwareItems = new ObservableCollection<SoftwareItem>();
             templateItems = new ObservableCollection<SoftwareItem>();
             CurrentSoftwareItems = new ObservableCollection<SoftwareItem>();
-            FetchSoftwareItems();
+            softwareItems = FetchSoftwareItems(AppList);
+            SelectedSoftwareItems = new ObservableCollection<SoftwareItem>();
+        }
+
+        public MainCode(string connStr)
+        {
+            connectionString = connStr;
+            utils = new Utilities();
+            client = new HttpClient();
+            AppList = new ObservableCollection<InstalledApplications>();
+            softwareItems = new ObservableCollection<SoftwareItem>();
+            templateItems = new ObservableCollection<SoftwareItem>();
+            CurrentSoftwareItems = new ObservableCollection<SoftwareItem>();
+            FetchSoftwareItems(AppList);
             SelectedSoftwareItems = new ObservableCollection<SoftwareItem>();
         }
 
         [RelayCommand]
-        private void FetchSoftwareItems()
+        private void CallFetchSoftwareItems()
         {
-            utils.ListPrograms(AppList);
-            softwareItems.Clear();
+            FetchSoftwareItems(AppList);
+        }
+
+        private ObservableCollection<SoftwareItem> FetchSoftwareItems(ObservableCollection<InstalledApplications> applist)
+        {
+            utils.ListPrograms(applist);
+            ObservableCollection<SoftwareItem> si = new ObservableCollection<SoftwareItem>();
 
             using (SqlConnection _con = new SqlConnection(connectionString))
             {
@@ -97,24 +120,26 @@ namespace PracaInzynierska
                         {
                             var item = new SoftwareItem();
                             
-                            softwareItems.Add(utils.ReadSoftwareItem(reader, AppList, false, ""));
+                            si.Add(utils.ReadSoftwareItem(reader, applist, false, ""));
                         }
                     }
 
                 }
                 catch (Exception ex)
                 { 
-                    ProgressText = "Wystąpił błąd:\n" + ex.Message;
+                    ProgressText = "Wystąpił błąd:\n" + ex.Message + "\n";
                 }
                 finally { _con.Close(); }
             }
             templateItems.Clear();
-            LoadTemplates();
+            templateItems = LoadTemplates(AppList);
+            //LoadTemplates(AppList);
             if(programsShown)
-                CurrentSoftwareItems = softwareItems.Clone();
+                CurrentSoftwareItems = si.Clone();
             else
                 CurrentSoftwareItems = templateItems.Clone();
             OnPropertyChanged(nameof(CurrentSoftwareItems));
+            return si;
         }
 
         [RelayCommand]
@@ -140,8 +165,9 @@ namespace PracaInzynierska
             }
         }
 
-        private void LoadTemplates()
+        public ObservableCollection<SoftwareItem> LoadTemplates(ObservableCollection<InstalledApplications> appList)
         {
+            ObservableCollection<SoftwareItem> si = new ObservableCollection<SoftwareItem>();
             using (SqlConnection _con = new SqlConnection(connectionString))
             {
                 string queryStatement = "SELECT * FROM dbo.templates";
@@ -168,20 +194,23 @@ namespace PracaInzynierska
                         {
                             while (reader.Read())
                             {
-                                templateItems.Add(utils.ReadSoftwareItem(reader, AppList, true, templateNames[i]));
+                                si.Add(utils.ReadSoftwareItem(reader, appList, true, templateNames[i]));
                             }
                         }
                     }
+                    return si;
                 }
                 catch (Exception ex)
                 {
-                    ProgressText = "Wystąpił błąd:\n" + ex.Message;
+                    ProgressText = "Wystąpił błąd:\n" + ex.Message + "\n";
+                    si = new ObservableCollection<SoftwareItem>();
+                    return si;
                 }
                 finally { _con.Close(); }
             }
         }
 
-        private void IncreaseTelemetryData(int id)
+        public bool IncreaseTelemetryData(int id)
         {
             using (SqlConnection _con = new SqlConnection(connectionString))
             {
@@ -189,20 +218,23 @@ namespace PracaInzynierska
                 try
                 {
                     _con.Open();
-                    cmd.ExecuteNonQuery();
+                    if (cmd.ExecuteNonQuery() > 0)
+                        return true;
+                    else
+                        return false;
+                        
                 }
                 catch (Exception ex)
                 {
-                    ProgressText = ex.Message;
+                    ProgressText = ex.Message + "\n";
+                    return false;
                 }
                 finally { _con.Close(); }
             }
         }
 
-        
-
         [RelayCommand]
-        public async Task StartInstallationProcess()
+        private async Task StartInstallationProcess()
         {
             EnableControls = false;
             bool installed = false;
@@ -238,6 +270,7 @@ namespace PracaInzynierska
                     {
                         ProgressText += $"Błąd podczas pobierania {SelectedSoftwareItems[i].Name}\n";
                         OperationInProgress = false;
+                        ProgressText += "------------------------Koniec instalacji " + SelectedSoftwareItems[i].Name + "------------------------\n";
                         continue;
                     }
 
@@ -283,7 +316,7 @@ namespace PracaInzynierska
             }
             if (installed)
             {
-                FetchSoftwareItems();
+                FetchSoftwareItems(AppList);
             }
             else
             {
@@ -301,27 +334,26 @@ namespace PracaInzynierska
             string filePath = "temp\\" + name + ".exe";
             if (!File.Exists(filePath))
             {
-                ProgressText += $"Pobieram {name}...\n";
-                Directory.CreateDirectory("temp");
+                ProgressText += $"\tPobieram {name}...\n";
                 var result = await DownloadFile(link, filePath);
                 return result;
             }
             else
             {
                 FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(Path.Combine(Environment.CurrentDirectory, filePath));
-                if(fvi.FileVersion == null)
+                if(fvi.FileVersion == null || String.IsNullOrWhiteSpace(fvi.FileVersion))
                 {
-                    ProgressText += $"Pobieram {name}...\n";
+                    ProgressText += $"\tPobieram {name}...\n";
                     var result = await DownloadFile(link, filePath);
                     return result;
                 }
                 else
                 {
-                    Version currentInstallerVersion = new Version(fvi.FileVersion);
+                    Version currentInstallerVersion = new Version(fvi.FileVersion.Trim());
                     int versionComparison = currentInstallerVersion.CompareTo(fileVersion);
                     if (versionComparison < 0)
                     {
-                        ProgressText += $"Pobieram {name}...\n";
+                        ProgressText += $"\tPobieram {name}...\n";
                         var result = await DownloadFile(link, filePath);
                         return result;
                     }
@@ -334,27 +366,20 @@ namespace PracaInzynierska
             }
         }
 
-        private async Task<bool> DownloadFile(string link, string filePath)
+        public async Task<bool> DownloadFile(string link, string filePath)
         {
             try
             {
+                Directory.CreateDirectory("temp");
                 using (var s = await client.GetStreamAsync(link)) //Czekanie na sprawdzenie dostępności pliku
                 {
-                    Directory.CreateDirectory("temp");
+                    
                     using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
                     {
-                        try
-                        {
-                            await s.CopyToAsync(fs); //Czekanie na zapisanie pliku na dysku
-                            return true;
-                        }
-                        catch (Exception ex)
-                        {
-                            ProgressText += ex.Message + "\n";
-                            return false;
-                        }
+                        await s.CopyToAsync(fs); //Czekanie na zapisanie pliku na dysku
+                        return true;
                     }
-                }
+                }   
             }
             catch(Exception ex)
             {
@@ -363,7 +388,7 @@ namespace PracaInzynierska
             }
         }
 
-        private async Task<bool> InstallPrograms(string path, string parameters)
+        public async Task<bool> InstallPrograms(string path, string parameters)
         {
             try
             {
@@ -396,7 +421,7 @@ namespace PracaInzynierska
             }
             catch (Exception ex)
             {
-                ProgressText += $"\n{ex.Message}";
+                ProgressText += $"\t{ex.Message}\n";
                 return false;
             }
         }
