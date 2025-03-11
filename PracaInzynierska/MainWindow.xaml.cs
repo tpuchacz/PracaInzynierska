@@ -8,7 +8,7 @@ namespace PracaInzynierska
         public MainWindow()
         {
             InitializeComponent();
-            MainCode code = new MainCode();
+            MainCode code = new MainCode("", null, null);
             DataContext = code;    
         }
 

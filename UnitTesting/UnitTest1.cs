@@ -1,35 +1,80 @@
+using Azure.Core;
+using Microsoft.Data.SqlClient;
+using Moq;
+using Moq.Protected;
+using Newtonsoft.Json.Linq;
 using PracaInzynierska;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Net;
 using System.Net.Sockets;
+using System.Windows.Media.Converters;
 
 namespace UnitTesting
 {
+    /*Klasa wykorzystana do testów jednostkowych.
+     * stworzona jest baza danych zawieraj¹ca kilka przyk³adowych wpisów i dzia³a ona niezale¿nie od g³ównej bazy danych.
+     * Testy integracyjne w osobnej klasie s¹ przeprowadzane na g³ównej bazie danych.
+     */
     public class UnitTest1
     {
-        string connStr = "server=localhost;database=inz;integrated Security=True;TrustServerCertificate=true";
+        string connStr = "Server=sampleServer;Database=sampleDB;Trusted_Connection=True;";
         MainCode code;
 
         public UnitTest1()
         {
-            code = new MainCode(connStr);
+            code = new MainCode(connStr, null, null);
         }
 
         [Fact]
         public async Task InvalidLinkReturnsFalse()
         {
-            string invalidLink = "https://sfadfsdfasdfasd.pl/download-file";
-            string filePath = "temp\\somefile.exe";
-            Version fileVersion = new Version("1.0.0");
-            Assert.False(await code.DownloadInstaller(invalidLink, filePath, fileVersion));
+            var invalidLink = "https://invalid-link.pl/download-file";
+            var fileName = "somefile.exe";
+            var version = "1.0.0";
+
+            var mockHandler = new Mock<HttpMessageHandler>();
+
+            mockHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>()) 
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound)
+                {
+                    Content = new StringContent("Not Found")
+                });
+
+            var mockHttpClient = new HttpClient(mockHandler.Object);
+            var code = new MainCode(connStr, null, mockHttpClient); 
+            var result = await code.DownloadInstaller(invalidLink, fileName, version);
+
+            Assert.False(result); 
         }
+
 
         [Fact]
         public async Task ValidLinkReturnsTrue()
         {
-            string validLink = "https://www.win-rar.com/fileadmin/winrar-versions/winrar/winrar-x64-710.exe";
-            string fileName = "WinRar";
-            Version fileVersion = new Version("7.0.1");
-            Assert.True(await code.DownloadInstaller(validLink, fileName, fileVersion));
+            string validLink = "https://valid-link.pl/download-file";
+            var fileName = "somefile.exe";
+            var version = "1.0.0";
+
+            var mockHandler = new Mock<HttpMessageHandler>();
+
+            mockHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StreamContent(new MemoryStream(System.Text.Encoding.UTF8.GetBytes("Valid file content")))
+                });
+
+            var mockHttpClient = new HttpClient(mockHandler.Object);
+            var code = new MainCode(connStr, null, mockHttpClient);
+            var result = await code.DownloadInstaller(validLink, fileName, version);
+
+            Assert.True(result);
         }
 
         [Fact]
@@ -58,12 +103,58 @@ namespace UnitTesting
         [Fact]
         public void IncreaseTelemetryIdExists()
         {
-            Assert.True(code.IncreaseTelemetryData(1));
+            var mockDbHelper = new Mock<IDatabaseService>();
+            mockDbHelper.Setup(db => db.ExecuteNonQuery(It.IsAny<string>())).Returns(1);
+            code = new MainCode(connStr, mockDbHelper.Object, null);
+
+            int result = code.IncreaseTelemetryData(1);
+            Assert.Equal(1, result);
         }
         [Fact]
         public void IncreaseTelemetryIdDoesntExists()
-        { 
-            Assert.False(code.IncreaseTelemetryData(-1));
+        {
+            var mockDbHelper = new Mock<IDatabaseService>();
+            mockDbHelper.Setup(db => db.ExecuteNonQuery(It.IsAny<string>())).Returns(0);
+            code = new MainCode(connStr, mockDbHelper.Object, null);
+
+            int result = code.IncreaseTelemetryData(-1);
+            Assert.Equal(0, result);
+        }
+
+        [Fact]
+        public void CompareVersionsOldIsLower()
+        {
+            string oldVersion = "1.0.0";
+            string newVersion = "2.0.1";
+            Assert.Equal(-1, code.CompareVersions(oldVersion, newVersion));
+        }
+        [Fact]
+        public void CompareVersionsOldEqualToNew()
+        {
+            string oldVersion = "1.0.0";
+            string newVersion = "1.0.0";
+            Assert.Equal(0, code.CompareVersions(oldVersion, newVersion));
+        }
+        [Fact]
+        public void CompareVersionsOldIsHigher()
+        {
+            string oldVersion = "2.0.1";
+            string newVersion = "1.0.0";
+            Assert.Equal(1, code.CompareVersions(oldVersion, newVersion));
+        }
+        [Fact]
+        public void CompareVersionsNotValid()
+        {
+            string oldVersion = "abcdef";
+            string newVersion = "ghijkl";
+            Assert.Equal(-2, code.CompareVersions(oldVersion, newVersion));
+        }
+        [Fact]
+        public void CompareVersionsNoCurrentVersion()
+        {
+            string oldVersion = "";
+            string newVersion = "2.0.0";
+            Assert.Equal(-1, code.CompareVersions(oldVersion, newVersion));
         }
     }
 }

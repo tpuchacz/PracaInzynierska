@@ -43,7 +43,6 @@ namespace PracaInzynierska
 
         [ObservableProperty]
         private int downloadCount;
-        
 
         public static bool IdExistsInCollection(ObservableCollection<SoftwareItem> items, int id)
         {

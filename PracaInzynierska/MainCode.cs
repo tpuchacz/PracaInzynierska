@@ -44,9 +44,6 @@ namespace PracaInzynierska
         private bool programsShown = true;
 
         [ObservableProperty]
-        private ObservableCollection<InstalledApplications> appList;
-
-        [ObservableProperty]
         private string progressText = "Czekam na operacje...";
 
         [ObservableProperty]
@@ -63,41 +60,77 @@ namespace PracaInzynierska
 
         private ObservableCollection<SoftwareItem> templateItems;
 
+        private ObservableCollection<InstalledApplications> appList;
+
+        private readonly IDatabaseService databaseService;
+
         Utilities utils;
-        public MainCode()
+        public MainCode(string connStr, IDatabaseService dbService, HttpClient client)
         {
-            connectionString = ConfigurationManager.AppSettings["connectionString"].ToString();
-            utils = new Utilities();
-            client = new HttpClient();
-            string customUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36";
-            client.DefaultRequestHeaders.Add("User-Agent", customUserAgent);
+            if(connStr == "")
+            {
+                try
+                {
+                    connectionString = ConfigurationManager.AppSettings["connectionString"].ToString();
+                }
+                catch (ConfigurationErrorsException ex)
+                {
+                    connectionString = "";
+                    ProgressText = "Błąd przy wczytywaniu konfiguracji: " + ex.Message + "\n";
+                }
+            }
+            else
+            {
+                connectionString = connStr;
+            }
 
-            //client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; SoftwareManagerPuchacz/1.0)");
-            AppList = new ObservableCollection<InstalledApplications>();
+            
+
+            if(dbService == null)
+                databaseService = new DatabaseService(connectionString);
+            else
+                databaseService = dbService;
+            
+            utils = new Utilities();
+
+            if (client == null)
+            {
+                this.client = new HttpClient();
+                string customUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36";
+                this.client.DefaultRequestHeaders.Add("User-Agent", customUserAgent);
+            }
+            else
+                this.client = client;
+
+            
+
+            appList = new ObservableCollection<InstalledApplications>();
             softwareItems = new ObservableCollection<SoftwareItem>();
             templateItems = new ObservableCollection<SoftwareItem>();
             CurrentSoftwareItems = new ObservableCollection<SoftwareItem>();
-            softwareItems = FetchSoftwareItems(AppList);
-            SelectedSoftwareItems = new ObservableCollection<SoftwareItem>();
-        }
-
-        public MainCode(string connStr)
-        {
-            connectionString = connStr;
-            utils = new Utilities();
-            client = new HttpClient();
-            AppList = new ObservableCollection<InstalledApplications>();
-            softwareItems = new ObservableCollection<SoftwareItem>();
-            templateItems = new ObservableCollection<SoftwareItem>();
-            CurrentSoftwareItems = new ObservableCollection<SoftwareItem>();
-            FetchSoftwareItems(AppList);
+            softwareItems = FetchSoftwareItems(appList);
+            templateItems = LoadTemplates(appList);
+            CurrentSoftwareItems = softwareItems;
             SelectedSoftwareItems = new ObservableCollection<SoftwareItem>();
         }
 
         [RelayCommand]
         private void CallFetchSoftwareItems()
         {
-            FetchSoftwareItems(AppList);
+            softwareItems = FetchSoftwareItems(appList);
+            templateItems = LoadTemplates(appList);
+            if (ProgramsShown)
+                CurrentSoftwareItems = softwareItems;
+            else
+                CurrentSoftwareItems = templateItems.Clone();
+        }
+
+        partial void OnProgramsShownChanged(bool value)
+        {
+            if (value)
+                CurrentSoftwareItems = softwareItems;
+            else
+                CurrentSoftwareItems = templateItems;
         }
 
         private ObservableCollection<SoftwareItem> FetchSoftwareItems(ObservableCollection<InstalledApplications> applist)
@@ -114,12 +147,10 @@ namespace PracaInzynierska
                 {
                     _con.Open();
                     using (var cmd = new SqlCommand(queryStatement, _con))
-                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    using (SqlDataReader reader = databaseService.ExecuteReader(queryStatement))
                     {
                         while (reader.Read())
                         {
-                            var item = new SoftwareItem();
-                            
                             si.Add(utils.ReadSoftwareItem(reader, applist, false, ""));
                         }
                     }
@@ -131,14 +162,6 @@ namespace PracaInzynierska
                 }
                 finally { _con.Close(); }
             }
-            templateItems.Clear();
-            templateItems = LoadTemplates(AppList);
-            //LoadTemplates(AppList);
-            if(programsShown)
-                CurrentSoftwareItems = si.Clone();
-            else
-                CurrentSoftwareItems = templateItems.Clone();
-            OnPropertyChanged(nameof(CurrentSoftwareItems));
             return si;
         }
 
@@ -165,8 +188,9 @@ namespace PracaInzynierska
             }
         }
 
-        public ObservableCollection<SoftwareItem> LoadTemplates(ObservableCollection<InstalledApplications> appList)
+        private ObservableCollection<SoftwareItem> LoadTemplates(ObservableCollection<InstalledApplications> appList)
         {
+            utils.ListPrograms(appList);
             ObservableCollection<SoftwareItem> si = new ObservableCollection<SoftwareItem>();
             using (SqlConnection _con = new SqlConnection(connectionString))
             {
@@ -210,27 +234,10 @@ namespace PracaInzynierska
             }
         }
 
-        public bool IncreaseTelemetryData(int id)
+        public int IncreaseTelemetryData(int id)
         {
-            using (SqlConnection _con = new SqlConnection(connectionString))
-            {
-                SqlCommand cmd = new SqlCommand($"UPDATE dbo.telemetryData SET downloadCount=downloadCount + 1 WHERE telemetryId={id}", _con);
-                try
-                {
-                    _con.Open();
-                    if (cmd.ExecuteNonQuery() > 0)
-                        return true;
-                    else
-                        return false;
-                        
-                }
-                catch (Exception ex)
-                {
-                    ProgressText = ex.Message + "\n";
-                    return false;
-                }
-                finally { _con.Close(); }
-            }
+            string query = $"UPDATE dbo.telemetryData SET downloadCount=downloadCount + 1 WHERE telemetryId={id}";
+            return databaseService.ExecuteNonQuery(query);
         }
 
         [RelayCommand]
@@ -242,19 +249,7 @@ namespace PracaInzynierska
             string notInstalled = "";
             for (int i = 0; i < SelectedSoftwareItems.Count; i++)
             {
-                Version newVersion = new Version(SelectedSoftwareItems[i].Version);
-                Version oldVersion;
-                if (SelectedSoftwareItems[i].CurrentVersion == null)
-                {
-                    oldVersion = new Version("0.0");
-                }
-                else
-                {
-                    oldVersion = new Version(SelectedSoftwareItems[i].CurrentVersion);
-                }
-
-
-                int versionComparison = oldVersion.CompareTo(newVersion);
+                int versionComparison = CompareVersions(SelectedSoftwareItems[i].CurrentVersion, SelectedSoftwareItems[i].Version);
 
                 if (versionComparison < 0)
                 {
@@ -262,7 +257,7 @@ namespace PracaInzynierska
 
                     OperationInProgress = true;
                     
-                    Task<bool> downloading = DownloadInstaller(SelectedSoftwareItems[i].DownloadLink, SelectedSoftwareItems[i].Name, newVersion);
+                    Task<bool> downloading = DownloadInstaller(SelectedSoftwareItems[i].DownloadLink, SelectedSoftwareItems[i].Name, SelectedSoftwareItems[i].Version);
 
                     bool downloadResult = await downloading;
 
@@ -316,7 +311,7 @@ namespace PracaInzynierska
             }
             if (installed)
             {
-                FetchSoftwareItems(AppList);
+                FetchSoftwareItems(appList);
             }
             else
             {
@@ -329,7 +324,27 @@ namespace PracaInzynierska
             EnableControls = true;
         }
 
-        public async Task<bool> DownloadInstaller(string link, string name, Version fileVersion)
+        public int CompareVersions(string oldVersion, string newVersion)
+        {
+            try
+            {
+                if (oldVersion == String.Empty)
+                    return -1;
+                else
+                {
+                    Version oldV = new Version(oldVersion);
+                    Version newV = new Version(newVersion);
+                    return oldV.CompareTo(newV);
+                }
+            }
+            catch (Exception ex)
+            {
+                return -2;
+            }
+            
+        }
+
+        public async Task<bool> DownloadInstaller(string link, string name, string fileVersion)
         {
             string filePath = "temp\\" + name + ".exe";
             if (!File.Exists(filePath))
@@ -349,8 +364,7 @@ namespace PracaInzynierska
                 }
                 else
                 {
-                    Version currentInstallerVersion = new Version(fvi.FileVersion.Trim());
-                    int versionComparison = currentInstallerVersion.CompareTo(fileVersion);
+                    int versionComparison = CompareVersions(fvi.FileVersion.Trim(), fileVersion);
                     if (versionComparison < 0)
                     {
                         ProgressText += $"\tPobieram {name}...\n";
@@ -373,7 +387,6 @@ namespace PracaInzynierska
                 Directory.CreateDirectory("temp");
                 using (var s = await client.GetStreamAsync(link)) //Czekanie na sprawdzenie dostępności pliku
                 {
-                    
                     using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
                     {
                         await s.CopyToAsync(fs); //Czekanie na zapisanie pliku na dysku
@@ -388,7 +401,7 @@ namespace PracaInzynierska
             }
         }
 
-        public async Task<bool> InstallPrograms(string path, string parameters)
+        private async Task<bool> InstallPrograms(string path, string parameters)
         {
             try
             {
@@ -408,9 +421,9 @@ namespace PracaInzynierska
                 await process.WaitForExitAsync();
 
                 string appName = Path.GetFileNameWithoutExtension(path);
-                utils.ListPrograms(AppList);
+                utils.ListPrograms(appList);
 
-                if (InstalledApplications.FindApp(appName, AppList) != null)
+                if (InstalledApplications.FindApp(appName, appList) != null)
                 {
                     return true;
                 }

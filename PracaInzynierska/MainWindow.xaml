@@ -32,17 +32,17 @@
               Command="{Binding SearchCommand}" CommandParameter="{Binding Text,RelativeSource={RelativeSource Self}}"></hc:SearchBar>
 
         <StackPanel HorizontalAlignment="Right" IsEnabled="{Binding EnableControls}">
-            <RadioButton Content="Szablony" Margin="5" GroupName="TemplateOrList" IsEnabled="{Binding ProgramsShown}">
-                <i:Interaction.Triggers>
-                    <i:EventTrigger EventName="Checked">
-                        <i:InvokeCommandAction Command="{Binding ShowTemplatesCommand}"/>
-                    </i:EventTrigger>
-                </i:Interaction.Triggers>
-            </RadioButton>
             <RadioButton Content="Wszystkie programy" GroupName="TemplateOrList" Margin="5" IsEnabled="{Binding TemplatesShown}">
                 <i:Interaction.Triggers>
                     <i:EventTrigger EventName="Checked">
                         <i:InvokeCommandAction Command="{Binding ShowProgramListCommand}" />
+                    </i:EventTrigger>
+                </i:Interaction.Triggers>
+            </RadioButton>
+            <RadioButton Content="Szablony" Margin="5" GroupName="TemplateOrList" IsEnabled="{Binding ProgramsShown}">
+                <i:Interaction.Triggers>
+                    <i:EventTrigger EventName="Checked">
+                        <i:InvokeCommandAction Command="{Binding ShowTemplatesCommand}"/>
                     </i:EventTrigger>
                 </i:Interaction.Triggers>
             </RadioButton>
