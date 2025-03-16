@@ -39,12 +39,12 @@ namespace PracaInzynierska
                         }
                         else if (e.Args[i + 1] == "/Weekly")
                         {
-                            CreateTask(3);  //Utwórz lub zmodyfikuj cykliczne sprawdzanie dostępności aktualizacji na co 3 dni
+                            CreateTask(7);  //Utwórz lub zmodyfikuj cykliczne sprawdzanie dostępności aktualizacji na co 3 dni
                             HandyControl.Controls.MessageBox.Show("Rozpoczęto lub zmodyfikowano sprawdzanie aktualizacji na cotygodniowo!", "Sukces", MessageBoxButton.OK, MessageBoxImage.Information);
                         }
                         else if (e.Args[i + 1] == "/Every3Days")
                         {
-                            CreateTask(7);  //Utwórz lub zmodyfikuj cykliczne sprawdzanie dostępności aktualizacji na co tydzień
+                            CreateTask(3);  //Utwórz lub zmodyfikuj cykliczne sprawdzanie dostępności aktualizacji na co tydzień
                             HandyControl.Controls.MessageBox.Show("Rozpoczęto lub zmodyfikowano sprawdzanie aktualizacji na co trzeci dzień", "Sukces", MessageBoxButton.OK, MessageBoxImage.Information);
                         }
                         else
@@ -96,7 +96,7 @@ namespace PracaInzynierska
 
                             if (updateAvailable)
                             {
-                                HandyControl.Controls.MessageBox.Show("Dostępna jest nowa wersja niektórych aplikacji!\n Otwórz menadżer oprogramowanai i je zainstaluj", "Dostępne aktualizacje", MessageBoxButton.OK, MessageBoxImage.Information);
+                                HandyControl.Controls.MessageBox.Show("Dostępna jest nowa wersja niektórych aplikacji.\nOtwórz menadżer oprogramowania i je zainstaluj!", "Dostępne aktualizacje", MessageBoxButton.OK, MessageBoxImage.Information);
                             }
                             else
                             {
@@ -130,7 +130,7 @@ namespace PracaInzynierska
 
                 var dailyTrigger = new DailyTrigger();
                 dailyTrigger.Repetition.Interval = TimeSpan.FromDays(repetition);  //Powtarza co jeden dzień zadanie codziennie
-                dailyTrigger.Repetition.Duration = TimeSpan.FromDays(30); //Przez okres 30 dni
+                dailyTrigger.Repetition.Duration = TimeSpan.FromDays(0); //Przez okres nieskończony
 
 
                 td.Triggers.Add(dailyTrigger);

@@ -71,5 +71,25 @@ namespace PracaInzynierska
             item.DownloadCount = reader.GetInt32("downloadCount");
             return item;
         }
+
+        public int CompareVersions(string oldVersion, string newVersion)
+        {
+            try
+            {
+                if (oldVersion == String.Empty)
+                    return -1;
+                else
+                {
+                    Version oldV = new Version(oldVersion);
+                    Version newV = new Version(newVersion);
+                    return oldV.CompareTo(newV);
+                }
+            }
+            catch (Exception ex)
+            {
+                return -2;
+            }
+
+        }
     }
 }

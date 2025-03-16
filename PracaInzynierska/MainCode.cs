@@ -249,7 +249,7 @@ namespace PracaInzynierska
             string notInstalled = "";
             for (int i = 0; i < SelectedSoftwareItems.Count; i++)
             {
-                int versionComparison = CompareVersions(SelectedSoftwareItems[i].CurrentVersion, SelectedSoftwareItems[i].Version);
+                int versionComparison = utils.CompareVersions(SelectedSoftwareItems[i].CurrentVersion, SelectedSoftwareItems[i].Version);
 
                 if (versionComparison < 0)
                 {
@@ -324,26 +324,6 @@ namespace PracaInzynierska
             EnableControls = true;
         }
 
-        public int CompareVersions(string oldVersion, string newVersion)
-        {
-            try
-            {
-                if (oldVersion == String.Empty)
-                    return -1;
-                else
-                {
-                    Version oldV = new Version(oldVersion);
-                    Version newV = new Version(newVersion);
-                    return oldV.CompareTo(newV);
-                }
-            }
-            catch (Exception ex)
-            {
-                return -2;
-            }
-            
-        }
-
         public async Task<bool> DownloadInstaller(string link, string name, string fileVersion)
         {
             string filePath = "temp\\" + name + ".exe";
@@ -364,7 +344,7 @@ namespace PracaInzynierska
                 }
                 else
                 {
-                    int versionComparison = CompareVersions(fvi.FileVersion.Trim(), fileVersion);
+                    int versionComparison = utils.CompareVersions(fvi.FileVersion.Trim(), fileVersion);
                     if (versionComparison < 0)
                     {
                         ProgressText += $"\tPobieram {name}...\n";

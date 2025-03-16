@@ -20,10 +20,12 @@ namespace UnitTesting
     {
         string connStr = "Server=sampleServer;Database=sampleDB;Trusted_Connection=True;";
         MainCode code;
+        Utilities utils;
 
         public UnitTest1()
         {
             code = new MainCode(connStr, null, null);
+            utils = new Utilities();
         }
 
         [Fact]
@@ -78,7 +80,7 @@ namespace UnitTesting
         }
 
         [Fact]
-        public async Task FindAppSuccess()
+        public void FindAppSuccess()
         {
             ObservableCollection<InstalledApplications> apps = new ObservableCollection<InstalledApplications>();
             InstalledApplications app = new InstalledApplications();
@@ -90,7 +92,7 @@ namespace UnitTesting
         }
 
         [Fact]
-        public async Task FindAppFailure()
+        public void FindAppFailure()
         {
             ObservableCollection<InstalledApplications> apps = new ObservableCollection<InstalledApplications>();
             InstalledApplications app = new InstalledApplications();
@@ -126,35 +128,35 @@ namespace UnitTesting
         {
             string oldVersion = "1.0.0";
             string newVersion = "2.0.1";
-            Assert.Equal(-1, code.CompareVersions(oldVersion, newVersion));
+            Assert.Equal(-1, utils.CompareVersions(oldVersion, newVersion));
         }
         [Fact]
         public void CompareVersionsOldEqualToNew()
         {
             string oldVersion = "1.0.0";
             string newVersion = "1.0.0";
-            Assert.Equal(0, code.CompareVersions(oldVersion, newVersion));
+            Assert.Equal(0, utils.CompareVersions(oldVersion, newVersion));
         }
         [Fact]
         public void CompareVersionsOldIsHigher()
         {
             string oldVersion = "2.0.1";
             string newVersion = "1.0.0";
-            Assert.Equal(1, code.CompareVersions(oldVersion, newVersion));
+            Assert.Equal(1, utils.CompareVersions(oldVersion, newVersion));
         }
         [Fact]
         public void CompareVersionsNotValid()
         {
             string oldVersion = "abcdef";
             string newVersion = "ghijkl";
-            Assert.Equal(-2, code.CompareVersions(oldVersion, newVersion));
+            Assert.Equal(-2, utils.CompareVersions(oldVersion, newVersion));
         }
         [Fact]
         public void CompareVersionsNoCurrentVersion()
         {
             string oldVersion = "";
             string newVersion = "2.0.0";
-            Assert.Equal(-1, code.CompareVersions(oldVersion, newVersion));
+            Assert.Equal(-1, utils.CompareVersions(oldVersion, newVersion));
         }
     }
 }
