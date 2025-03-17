@@ -89,7 +89,6 @@ namespace PracaInzynierska
             {
                 return -2;
             }
-
         }
     }
 }
